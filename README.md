@@ -2,6 +2,11 @@
 
 AlgoHub is an intuitive and interactive web application designed to visualize algorithms and offer a coding practice environment. Whether you're learning sorting algorithms or exploring pathfinding, AlgoHub brings algorithms to life through visual representation and hands-on coding challenges.
 
+## ✨ Preview
+
+[![Vercel](https://img.shields.io/badge/Vercel-Visit%20App-blue)](https://algohub-ochre.vercel.app/)
+
+
 ## 🚀 Features
 
 * 📊 Interactive visualization of sorting and pathfinding algorithms.
