@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import CodeEditor from '../components/CodeEditor';
@@ -17,60 +18,104 @@ const AlgorithmVisualizer = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(500); // milliseconds
   const [dataSize, setDataSize] = useState(10);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   // Find the algorithm from all algorithm sources
   useEffect(() => {
-    const allAlgorithms = {
-      ...sortingAlgorithms,
-      ...searchAlgorithms,
-      ...graphAlgorithms
+    const loadAlgorithm = () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        console.log("Loading algorithm with ID:", algorithmId);
+        console.log("Available sorting algorithms:", Object.keys(sortingAlgorithms));
+        console.log("Available search algorithms:", Object.keys(searchAlgorithms));
+        console.log("Available graph algorithms:", Object.keys(graphAlgorithms));
+        
+        // Combine all algorithm sources
+        const allAlgorithms = {
+          ...sortingAlgorithms,
+          ...searchAlgorithms,
+          ...graphAlgorithms
+        };
+        
+        console.log("All available algorithms:", Object.keys(allAlgorithms));
+        
+        const foundAlgorithm = allAlgorithms[algorithmId];
+        
+        if (foundAlgorithm) {
+          console.log("Found algorithm:", foundAlgorithm.name);
+          setAlgorithm(foundAlgorithm);
+          setCode(foundAlgorithm.implementation);
+          
+          // Generate initial data based on algorithm type
+          generateData(foundAlgorithm.type, dataSize);
+          setLoading(false);
+        } else {
+          console.error(`Algorithm with ID "${algorithmId}" not found`);
+          setError(`Algorithm "${algorithmId}" not found`);
+          setLoading(false);
+          
+          // Redirect after a short delay
+          setTimeout(() => {
+            navigate('/algorithms');
+          }, 2000);
+        }
+      } catch (err) {
+        console.error("Error loading algorithm:", err);
+        setError(`Error loading algorithm: ${err.message}`);
+        setLoading(false);
+      }
     };
     
-    const foundAlgorithm = allAlgorithms[algorithmId];
-    
-    if (foundAlgorithm) {
-      setAlgorithm(foundAlgorithm);
-      setCode(foundAlgorithm.implementation);
-      
-      // Generate initial data based on algorithm type
-      generateData(foundAlgorithm.type, dataSize);
-    } else {
-      // Algorithm not found, redirect to algorithm list
-      navigate('/algorithms');
-    }
-  }, [algorithmId, navigate]);
+    loadAlgorithm();
+  }, [algorithmId, navigate, dataSize]);
   
   // Generate data based on algorithm type
   const generateData = (type, size) => {
-    if (type === 'sorting') {
-      // Random array for sorting
-      const newData = Array.from({ length: size }, () => Math.floor(Math.random() * 100) + 1);
-      setData(newData);
-    } else if (type === 'search') {
-      // Sorted array for searching
-      const newData = Array.from({ length: size }, (_, i) => i * Math.floor((100 / size)) + 1);
-      setData(newData);
-    } else if (type === 'graph') {
-      // Simple graph representation for graph algorithms
-      // For simplicity, creating a circular graph where each node connects to adjacent nodes
-      const nodes = Array.from({ length: Math.min(10, size) }, (_, i) => `Node ${i}`);
-      const edges = [];
-      
-      for (let i = 0; i < nodes.length; i++) {
-        // Connect to next node (circular)
-        edges.push([i, (i + 1) % nodes.length, Math.floor(Math.random() * 10) + 1]);
-        // Add some random connections for more interesting graphs
-        if (nodes.length > 3 && Math.random() > 0.5) {
-          let target;
-          do {
-            target = Math.floor(Math.random() * nodes.length);
-          } while (target === i || target === (i + 1) % nodes.length);
+    try {
+      if (type === 'sorting') {
+        // For sorting algorithms, create array of objects with values and state
+        const newData = Array.from({ length: size }, (_, i) => ({
+          id: i,
+          value: Math.floor(Math.random() * 100) + 1,
+          state: ''
+        }));
+        setData(newData);
+      } else if (type === 'search') {
+        // For search algorithms, create sorted array
+        const newData = Array.from({ length: size }, (_, i) => ({
+          id: i,
+          value: i * Math.floor((100 / size)) + 1,
+          state: ''
+        }));
+        setData(newData);
+      } else if (type === 'graph') {
+        // Simple graph representation
+        const nodes = Array.from({ length: Math.min(10, size) }, (_, i) => `Node ${i}`);
+        const edges = [];
+        
+        for (let i = 0; i < nodes.length; i++) {
+          // Connect to next node (circular)
+          edges.push([i, (i + 1) % nodes.length, Math.floor(Math.random() * 10) + 1]);
           
-          edges.push([i, target, Math.floor(Math.random() * 10) + 1]);
+          // Add some random connections for more interesting graphs
+          if (nodes.length > 3 && Math.random() > 0.5) {
+            let target;
+            do {
+              target = Math.floor(Math.random() * nodes.length);
+            } while (target === i || target === (i + 1) % nodes.length);
+            
+            edges.push([i, target, Math.floor(Math.random() * 10) + 1]);
+          }
         }
+        
+        setData({ nodes, edges });
       }
-      
-      setData({ nodes, edges });
+    } catch (err) {
+      console.error("Error generating data:", err);
+      setError(`Error generating data: ${err.message}`);
     }
   };
   
@@ -84,12 +129,11 @@ const AlgorithmVisualizer = () => {
     if (!algorithm) return;
     
     try {
-      // Create function from code string
-      // Note: This is for educational purposes and has security implications in production
-      const runFunction = new Function('data', code);
+      setError(null);
       
-      // Run algorithm with current data and collect steps
-      const steps = runFunction([...data]);
+      // For safety, we're using the algorithm's visualize function directly
+      // rather than evaluating code string
+      const steps = algorithm.visualize(data);
       
       // Reset visualization
       setVisualizationSteps(steps);
@@ -97,7 +141,7 @@ const AlgorithmVisualizer = () => {
       setIsPlaying(false);
     } catch (error) {
       console.error("Error running algorithm:", error);
-      alert(`Error running algorithm: ${error.message}`);
+      setError(`Error running algorithm: ${error.message}`);
     }
   };
   
@@ -132,8 +176,36 @@ const AlgorithmVisualizer = () => {
     return () => clearTimeout(timer);
   }, [isPlaying, currentStep, visualizationSteps, speed]);
   
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-t-blue-500 border-blue-200 mx-auto mb-4"></div>
+          <p className="text-lg text-gray-600">Loading algorithm...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-md p-6 text-center">
+        <svg className="w-12 h-12 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <h3 className="text-lg font-semibold text-red-800 mb-2">Error</h3>
+        <p className="text-red-700">{error}</p>
+        <p className="mt-4 text-gray-600">Redirecting to algorithm list...</p>
+      </div>
+    );
+  }
+  
   if (!algorithm) {
-    return <div className="text-center py-10">Loading...</div>;
+    return (
+      <div className="text-center py-10">
+        <p className="text-lg text-gray-600">Algorithm not found. Redirecting...</p>
+      </div>
+    );
   }
   
   return (
@@ -228,6 +300,7 @@ const AlgorithmVisualizer = () => {
             currentStep={currentStep}
             isPlaying={isPlaying}
             onStepChange={setCurrentStep}
+            algorithmType={algorithm.type}
           />
           
           {visualizationSteps.length > 0 && (
